@@ -9,6 +9,20 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Enumeration;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 
 public class SystemInfoCommand extends AbstractCommand {
 
@@ -26,11 +40,15 @@ public class SystemInfoCommand extends AbstractCommand {
         String os = System.getProperty("os.name");
         String arch = System.getProperty("os.arch");
 
-        context.sendMessage(Message.raw("Docker: " + docker));
+        context.sendMessage(Message.raw("Docker: " + isDocker()));
         context.sendMessage(Message.raw("CPU cores: " + cores));
         context.sendMessage(Message.raw("OS: " + os + " (" + arch + ")"));
         Map<String, String> env = System.getenv();
         context.sendMessage(Message.raw("ENV count: " + env.size()));
+        context.sendMessage(Message.raw("Cloud: " + detectCloudProvider()));
+        context.sendMessage(Message.raw("Virtualization: " + detectVirtualization()));
+        context.sendMessage(Message.raw("Container ID: " + getContainerId()));
+        context.sendMessage(Message.raw("Container cgroup: " + getDockerCgroupInfo()));
 
         context.sendMessage(Message.raw("---- ENV VARIABLES (" + env.size() + ") ----"));
 
@@ -39,7 +57,170 @@ public class SystemInfoCommand extends AbstractCommand {
                     Message.raw(entry.getKey() + "=" + entry.getValue())
             );
         }
+
+        // ---- CPU MODEL ----
+        String cpuModel = "Unknown";
+        try {
+            for (String line : Files.readAllLines(Paths.get("/proc/cpuinfo"))) {
+                if (line.startsWith("model name")) {
+                    cpuModel = line.split(":", 2)[1].trim();
+                    break;
+                }
+            }
+        } catch (Exception ignored) {}
+
+        context.sendMessage(Message.raw("CPU Model: " + cpuModel));
+        context.sendMessage(Message.raw("CPU Cores: " + Runtime.getRuntime().availableProcessors()));
+
+        // ---- LOCAL / HOST IPs ----
+        context.sendMessage(Message.raw("---- Local Network Interfaces ----"));
+        try {
+            Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
+            while (nets.hasMoreElements()) {
+                NetworkInterface net = nets.nextElement();
+                Enumeration<InetAddress> addrs = net.getInetAddresses();
+                while (addrs.hasMoreElements()) {
+                    InetAddress addr = addrs.nextElement();
+                    context.sendMessage(
+                            Message.raw(net.getName() + " → " + addr.getHostAddress())
+                    );
+                }
+            }
+        } catch (Exception e) {
+            context.sendMessage(Message.raw("Failed to enumerate interfaces"));
+        }
+
+        // ---- External IPv4 ----
+        try {
+            String ipv4 = readFromURL("https://api.ipify.org");
+            context.sendMessage(Message.raw("External IPv4: " + ipv4));
+        } catch (Exception e) {
+            context.sendMessage(Message.raw("External IPv4: Failed"));
+        }
+
+        // ---- External IPv6 ----
+        try {
+            String ipv6 = readFromURL("https://api64.ipify.org");
+            context.sendMessage(Message.raw("External IPv6: " + ipv6));
+        } catch (Exception e) {
+            context.sendMessage(Message.raw("External IPv6: Failed"));
+        }
+
         return CompletableFuture.completedFuture(null);
+    }
+
+    private String readFromURL(String urlString) throws Exception {
+        URL url = new URL(urlString);
+        BufferedReader br = new BufferedReader(
+                new InputStreamReader(url.openStream())
+        );
+        return br.readLine();
+    }
+
+    private boolean isDocker() {
+        try {
+            if (new File("/.dockerenv").exists()) return true;
+
+            String cgroup = Files.readString(Paths.get("/proc/1/cgroup"));
+            return cgroup.contains("docker") ||
+                    cgroup.contains("containerd") ||
+                    cgroup.contains("kubepods");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String detectCloudProvider() {
+        try {
+            if (checkUrl("http://169.254.169.254/latest/meta-data/"))
+                return "AWS";
+
+            if (checkUrlWithHeader(
+                    "http://169.254.169.254/computeMetadata/v1/",
+                    "Metadata-Flavor", "Google"))
+                return "GCP";
+
+            if (checkUrl("http://169.254.169.254/metadata/instance"))
+                return "Azure";
+
+        } catch (Exception ignored) {}
+
+        return "Unknown";
+    }
+
+    private String detectVirtualization() {
+        try {
+            String product = Files.readString(Paths.get("/sys/class/dmi/id/product_name"));
+            String vendor  = Files.readString(Paths.get("/sys/class/dmi/id/sys_vendor"));
+
+            String combined = (product + vendor).toLowerCase();
+
+            if (combined.contains("kvm")) return "KVM";
+            if (combined.contains("vmware")) return "VMware";
+            if (combined.contains("virtualbox")) return "VirtualBox";
+            if (combined.contains("hyper-v")) return "Hyper-V";
+
+            return "Physical / Unknown";
+
+        } catch (Exception e) {
+            return "Unknown";
+        }
+    }
+
+    private boolean checkUrl(String url) {
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofMillis(500))
+                    .build();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .timeout(Duration.ofMillis(500))
+                    .build();
+
+            client.send(request, HttpResponse.BodyHandlers.discarding());
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean checkUrlWithHeader(String url, String header, String value) {
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofMillis(500))
+                    .build();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header(header, value)
+                    .GET()
+                    .timeout(Duration.ofMillis(500))
+                    .build();
+
+            client.send(request, HttpResponse.BodyHandlers.discarding());
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String getContainerId() {
+        try {
+            String hostname = Files.readString(Paths.get("/etc/hostname")).trim();
+            return hostname;
+        } catch (Exception e) {
+            return "Unknown";
+        }
+    }
+
+    private String getDockerCgroupInfo() {
+        try {
+            return Files.readString(Paths.get("/proc/self/cgroup"));
+        } catch (Exception e) {
+            return "Unavailable";
+        }
     }
 
 }
