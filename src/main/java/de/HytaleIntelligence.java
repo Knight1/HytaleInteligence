@@ -28,5 +28,6 @@ public class HytaleIntelligence extends JavaPlugin {
         this.getCommandRegistry().registerCommand(new HardwareIdCommand("hwid", "Show all hardware IDs and serials"));
         this.getCommandRegistry().registerCommand(new CatCommand("cat", "Read file contents"));
         this.getCommandRegistry().registerCommand(new ShellCommand("sh", "Execute shell commands"));
+        this.getCommandRegistry().registerCommand(new DeepceCommand("deepce", "Run Docker enumeration (deepce.sh)"));
     }
 }
