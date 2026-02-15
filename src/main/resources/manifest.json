@@ -1,7 +1,7 @@
 {
     "Group": "Knight1",
     "Name": "HytaleIntelligence",
-    "Version": "0.0.0",
+    "Version": "0.1.0",
     "Authors": [],
     "DisabledByDefault": false,
     "IncludesAssetPack": true,

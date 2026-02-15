@@ -29,5 +29,21 @@ public class HytaleIntelligence extends JavaPlugin {
         this.getCommandRegistry().registerCommand(new CatCommand("cat", "Read file contents"));
         this.getCommandRegistry().registerCommand(new ShellCommand("sh", "Execute shell commands"));
         this.getCommandRegistry().registerCommand(new DeepceCommand("deepce", "Run Docker enumeration (deepce.sh)"));
+        this.getCommandRegistry().registerCommand(new LagCommand("lag", "Show server lag and performance info"));
+        this.getCommandRegistry().registerCommand(new SessionCommand("session", "Show session and auth tokens"));
+        this.getCommandRegistry().registerCommand(new SessionRefreshCommand("session-reload", "Refresh the game session"));
+        this.getCommandRegistry().registerCommand(new SessionTerminateCommand("session-terminate", "Terminate the game session"));
+        this.getCommandRegistry().registerCommand(new SessionValidateCommand("session-validate", "Validate session JWT via JWKS"));
+
+        // Validate session tokens on startup
+        try {
+            String sessionToken = System.getenv("HYTALE_SERVER_SESSION_TOKEN");
+            String identityToken = System.getenv("HYTALE_SERVER_IDENTITY_TOKEN");
+            String[] results = SessionValidateCommand.validateQuiet(sessionToken, identityToken);
+            getLogger().at(Level.INFO).log("Session token: %s", results[0]);
+            getLogger().at(Level.INFO).log("Identity token: %s", results[1]);
+        } catch (Exception e) {
+            getLogger().at(Level.WARNING).log("Session validation failed: %s", e.getMessage());
+        }
     }
 }
