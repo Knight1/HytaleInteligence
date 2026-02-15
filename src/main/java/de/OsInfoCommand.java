@@ -14,6 +14,7 @@ public class OsInfoCommand extends AbstractCommand {
 
     public OsInfoCommand(String name, String description) {
         super(name, description);
+        requirePermission("hytale.intelligence.info");
     }
 
     @Nullable
