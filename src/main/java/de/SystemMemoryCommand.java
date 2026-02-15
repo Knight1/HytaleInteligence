@@ -10,6 +10,8 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 
 import static de.tobiassachs.CommandUtils.*;
@@ -98,7 +100,7 @@ public class SystemMemoryCommand extends AbstractCommand {
 
         // ---- Container Memory Limits ----
         context.sendMessage(Message.raw("---- Container Memory Limits ----"));
-        context.sendMessage(Message.raw("memory.max:     " + readFileSafe("/sys/fs/cgroup/memory.max")));
+        context.sendMessage(Message.raw("Docker Memory Limit: " + getDockerMemoryLimit()));
         context.sendMessage(Message.raw("memory.current: " + readFileSafe("/sys/fs/cgroup/memory.current")));
         context.sendMessage(Message.raw("memory.swap.max:     " + readFileSafe("/sys/fs/cgroup/memory.swap.max")));
         context.sendMessage(Message.raw("memory.swap.current: " + readFileSafe("/sys/fs/cgroup/memory.swap.current")));
@@ -108,6 +110,14 @@ public class SystemMemoryCommand extends AbstractCommand {
         sendMultiline(context, runCommandMultiline("free -h"));
 
         return CompletableFuture.completedFuture(null);
+    }
+
+    private String getDockerMemoryLimit() {
+        try {
+            return Files.readString(Paths.get("/sys/fs/cgroup/memory.max")).trim();
+        } catch (Exception e) {
+            return "Unlimited or not containerized";
+        }
     }
 
     private String humanReadable(long bytes) {
