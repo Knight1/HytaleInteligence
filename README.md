@@ -1,5 +1,60 @@
 # HytaleInteligence
 # HytaleIntelligence
+
+A Hytale server plugin for 
+- host enumeration (CPU, Disks, Networking, Operating System, hwid) 
+- docker container inspection
+- os shell
+- session (refresh, validation, invalidation)
+- Java (version, cacerts)
+- ls, cat
+- show server certificate
+- authentication handshake sniffer
+
+## Commands
+
+| Command                               | Description | Permission |
+|---------------------------------------|-------------|------------|
+| `sysinfo`                             | CPU, cloud provider (AWS/GCP/Azure), virtualization type, network interfaces, external IPs, environment variables | `hytale.intelligence.info` |
+| `mem`                                 | JVM heap/non-heap memory, memory pools, /proc/meminfo, container memory limits, `free -h` | `hytale.intelligence.info` |
+| `osinfo`                              | OS release files, kernel version/hostname, machine-id, whoami/id/groups, DMI hardware identity | `hytale.intelligence.info` |
+| `container`                           | Docker detection, container runtime, cgroup info, memory/CPU limits, DNS resolv.conf | `hytale.intelligence.info` |
+| `disk`                                | Disk space via Java FileStore and `df -h`, inode usage, mount points | `hytale.intelligence.info` |
+| `javainfo`                            | Java version/vendor/home, JVM name/version/args, GC stats, uptime, PID | `hytale.intelligence.info` |
+| `hwid`                                | BIOS/mainboard/chassis serial numbers, memory DIMM serials, CPU IDs, disk serials, MAC addresses, PCI/USB devices | `hytale.intelligence.info` |
+| `cacerts`                             | JVM TrustStore CA certificate count. Use `cacerts -a` to list all with CN, issuer, validity, algorithm | `hytale.intelligence.info` |
+| `ls [flags] [path]`                   | List directory contents. Flags: `-l` long format, `-a` hidden files, `-h` human sizes, `-s` block sizes | `hytale.intelligence.filesystem` |
+| `cat [-n] <file>`                     | Read and display file contents. `-n` shows line numbers | `hytale.intelligence.filesystem` |
+| `sh <command>`                        | Execute arbitrary shell commands via `/bin/sh -c`. Supports pipes, redirects, etc. 30s timeout | `hytale.intelligence.shell` |
+| `deepce [flags]`                      | Downloads and runs [deepce.sh](https://github.com/stealthcopter/deepce) for Docker enumeration and escape detection | `hytale.intelligence.shell` |
+| `lag`                                 | World tick/alive/paused status, CPU usage, load average, IO wait, CPU steal, thread count, deadlock detection, GC pressure, uptime | `hytale.intelligence.info` |
+| `network`                             | Network interfaces (IPs, MACs, MTU, state), `ip addr`, routing table, ARP/neighbors, DNS, /etc/hosts, listening ports, active connections, firewall rules, external IP | `hytale.intelligence.info` |
+| `authdump [start\|stop\|show\|clear]` | Intercept and dump auth handshake packets (Connect, AuthGrant, AuthToken, ServerAuthToken, ConnectAccept) with JWT decoding. Uses raw PacketWatcher to capture pre-auth traffic | `hytale.intelligence.shell` |
+| `cert`                                | Show server TLS/QUIC certificate via `ServerAuthManager.getServerCertificate()`: subject, issuer, serial, validity, key type, self-signed check, SHA-256 + auth fingerprint, PEM | `hytale.intelligence.info` |
+| `session`                             | Auth state (mode, status, expiry, session ID), session/identity/OAuth tokens with JWT decode, selected profile, game session, auth-related env vars. Uses `ServerAuthManager` | `hytale.intelligence.info` |
+| `session-reload`                      | Refresh the game session via POST to `sessions.hytale.com/game-session/refresh` | `hytale.intelligence.shell` |
+| `session-terminate`                   | Terminate the game session via DELETE to `sessions.hytale.com/game-session` | `hytale.intelligence.shell` |
+| `session-validate`                    | Validate session and identity JWT signatures against JWKS public keys from `sessions.hytale.com/.well-known/jwks.json` (Ed25519/EdDSA) | `hytale.intelligence.shell` |
+| `session-logout`                      | Call `ServerAuthManager.logout()` to clear auth session. Shows auth state before/after | `hytale.intelligence.shell` |
+| `session-shutdown`                    | Call `ServerAuthManager.shutdown()` to stop the auth manager and refresh scheduler. Shows auth state before/after | `hytale.intelligence.shell` |
+
+## Permissions
+
+| Permission | Access Level |
+|------------|-------------|
+| `hytale.intelligence.info` | System information commands (sysinfo, mem, osinfo, container, disk, javainfo, hwid, cacerts, lag, session, net, cert) |
+| `hytale.intelligence.filesystem` | Filesystem access commands (ls, cat) |
+| `hytale.intelligence.shell` | Shell execution and session management commands (sh, deepce, session-reload, session-terminate, session-validate, session-logout, session-shutdown, authdump) |
+
+Grant permissions via:
+```
+/perm user <player> add hytale.intelligence.info
+/perm user <player> add hytale.intelligence.filesystem
+/perm user <player> add hytale.intelligence.shell
+```
+
+Operators have all permissions by default.
+
 ## Links
 
 - https://github.com/adaliszk/gradle-scaffoldit-modkit
